@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>Оплата тарифа</title>
+    <title>Оплата тарифа PRO</title>
 
     <!-- CloudPayments -->
     <script src="https://widget.cloudpayments.ru/bundles/cloudpayments.js"></script>
@@ -12,23 +12,26 @@
 
     <style>
         body {
+            margin: 0;
             font-family: Arial, sans-serif;
             background: #0e0e0e;
             color: #ffffff;
-            display: flex;
-            justify-content: center;
-            align-items: center;
             height: 100vh;
-            margin: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
 
-        .card {
-            background: #1c1c1c;
-            padding: 24px;
-            border-radius: 12px;
-            width: 100%;
-            max-width: 360px;
+        .loader {
             text-align: center;
+        }
+
+        .loader h2 {
+            margin-bottom: 8px;
+        }
+
+        .hidden {
+            display: none;
         }
 
         button {
@@ -40,21 +43,20 @@
             border-radius: 8px;
             font-size: 16px;
             cursor: pointer;
-        }
-
-        button:hover {
-            opacity: 0.9;
+            margin-top: 20px;
         }
     </style>
 </head>
 <body>
 
-<div class="card">
-    <h2>Тариф PRO</h2>
-    <p>Доступ к боту на 30 дней</p>
-    <h3>100 ₽</h3>
+<div class="loader">
+    <h2>Открываем форму оплаты…</h2>
+    <p>Пожалуйста, подождите</p>
 
-    <button onclick="pay()">Оплатить</button>
+    <!-- fallback кнопка -->
+    <button id="payBtn" class="hidden" onclick="pay()">
+        Оплатить
+    </button>
 </div>
 
 <script>
@@ -65,11 +67,11 @@
         const user = tg.initDataUnsafe.user;
 
         if (!user) {
-            alert('Не удалось получить данные пользователя Telegram');
+            tg.showAlert('Ошибка получения данных Telegram');
             return;
         }
 
-        var widget = new cp.CloudPayments();
+        const widget = new cp.CloudPayments();
 
         widget.charge(
             {
@@ -84,23 +86,24 @@
                 }
             },
             function (options) {
-                // SUCCESS
+                // ✅ УСПЕХ
                 fetch('https://nikabogdanovaa98798.app.n8n.cloud/webhook/payment-result', {
                     method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         status: 'success',
                         payment: options
                     })
                 });
 
+                tg.showAlert('✅ Оплата прошла успешно');
                 tg.close();
             },
             function (reason, options) {
-                // FAIL
+                // ❌ ОШИБКА / ОТМЕНА
                 fetch('https://nikabogdanovaa98798.app.n8n.cloud/webhook/payment-result', {
                     method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         status: 'fail',
                         reason: reason,
@@ -108,11 +111,23 @@
                     })
                 });
 
-                alert('Оплата не прошла');
+                tg.showAlert('❌ Оплата не прошла');
             }
         );
     }
+
+    // 🚀 АВТОЗАПУСК
+    window.addEventListener('load', () => {
+        setTimeout(() => {
+            // показываем кнопку как fallback
+            document.getElementById('payBtn').classList.remove('hidden');
+
+            // автоклик
+            document.getElementById('payBtn').click();
+        }, 400);
+    });
 </script>
 
 </body>
 </html>
+
