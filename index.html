@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>Оплата тарифа PRO</title>
+    <title>Оплата тарифа</title>
 
     <!-- CloudPayments -->
     <script src="https://widget.cloudpayments.ru/bundles/cloudpayments.js"></script>
@@ -15,20 +15,16 @@
             margin: 0;
             font-family: Arial, sans-serif;
             background: #0e0e0e;
-            color: #ffffff;
+            color: #fff;
             height: 100vh;
             display: flex;
-            align-items: center;
             justify-content: center;
+            align-items: center;
+            text-align: center;
         }
 
         .loader {
-            text-align: center;
-            opacity: 0.85;
-        }
-
-        .loader h2 {
-            margin-bottom: 8px;
+            opacity: 0.9;
         }
     </style>
 </head>
@@ -39,67 +35,82 @@
     <p>Пожалуйста, подождите</p>
 </div>
 
-<!-- скрытая кнопка только для автозапуска -->
+<!-- скрытая кнопка для автозапуска -->
 <button id="payBtn" onclick="pay()" style="display:none;"></button>
 
 <script>
     const tg = window.Telegram.WebApp;
     tg.expand();
 
+    // Список тарифов и их цены
+    const TARIFFS = {
+        TEST: 990,
+        START: 2990,
+        PRO: 6990
+    };
+
+    // Получаем тариф из URL
+    function getTariffFromURL() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const tariff = urlParams.get('tariff');
+        return tariff && TARIFFS[tariff] ? tariff : 'TEST'; // по умолчанию TEST
+    }
+
+    // Функция оплаты
     function pay() {
         const user = tg.initDataUnsafe.user;
-
         if (!user) {
             tg.showAlert('Ошибка получения данных Telegram');
             return;
         }
 
+        const tariff = getTariffFromURL();
+        const amount = TARIFFS[tariff];
+
         const widget = new cp.CloudPayments();
 
         widget.charge(
             {
-                publicId: 'pk_371ac53e43d82e5215af37c4dda28',
-                description: 'Оплата тарифа PRO',
-                amount: 100,
+                publicId: 'pk_371ac53e43d82e5215af37c4dda28', // твой publicId
+                description: `Оплата тарифа ${tariff}`,
+                amount: amount,
                 currency: 'RUB',
                 data: {
                     telegram_id: user.id,
                     username: user.username,
-                    tariff: 'pro'
+                    tariff: tariff
                 }
             },
-            function (options) {
-                // ✅ УСПЕХ
+            function(options) {
+                // Успех
                 fetch('https://nikabogdanovaa98798.app.n8n.cloud/webhook/payment-result', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify({
                         status: 'success',
                         payment: options
                     })
                 });
-
-                tg.showAlert('✅ Оплата прошла успешно');
+                tg.showAlert(`✅ Оплата тарифа ${tariff} прошла успешно`);
                 tg.close();
             },
-            function (reason, options) {
-                // ❌ ОШИБКА / ОТМЕНА
+            function(reason, options) {
+                // Ошибка / отмена
                 fetch('https://nikabogdanovaa98798.app.n8n.cloud/webhook/payment-result', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify({
                         status: 'fail',
                         reason: reason,
                         payment: options
                     })
                 });
-
-                tg.showAlert('❌ Оплата не прошла');
+                tg.showAlert(`❌ Оплата тарифа ${tariff} не прошла`);
             }
         );
     }
 
-    // 🚀 АВТОЗАПУСК ОПЛАТЫ
+    // Автозапуск оплаты
     window.addEventListener('load', () => {
         setTimeout(() => {
             document.getElementById('payBtn').click();
@@ -109,4 +120,3 @@
 
 </body>
 </html>
- 
