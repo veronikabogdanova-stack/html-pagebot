@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Оплата тарифа</title>
+
+    <!-- CloudPayments -->
+    <script src="https://widget.cloudpayments.ru/bundles/cloudpayments.js"></script>
+
+    <!-- Telegram Mini App -->
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #0e0e0e;
+            color: #ffffff;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+
+        .card {
+            background: #1c1c1c;
+            padding: 24px;
+            border-radius: 12px;
+            width: 100%;
+            max-width: 360px;
+            text-align: center;
+        }
+
+        button {
+            background: #2ea6ff;
+            border: none;
+            color: #fff;
+            padding: 14px;
+            width: 100%;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            opacity: 0.9;
+        }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <h2>Тариф PRO</h2>
+    <p>Доступ к боту на 30 дней</p>
+    <h3>100 ₽</h3>
+
+    <button onclick="pay()">Оплатить</button>
+</div>
+
+<script>
+    const tg = window.Telegram.WebApp;
+    tg.expand();
+
+    function pay() {
+        const user = tg.initDataUnsafe.user;
+
+        if (!user) {
+            alert('Не удалось получить данные пользователя Telegram');
+            return;
+        }
+
+        var widget = new cp.CloudPayments();
+
+        widget.charge(
+            {
+                publicId: 'pk_371ac53e43d82e5215af37c4dda28',
+                description: 'Оплата тарифа PRO',
+                amount: 100,
+                currency: 'RUB',
+                data: {
+                    telegram_id: user.id,
+                    username: user.username,
+                    tariff: 'pro'
+                }
+            },
+            function (options) {
+                // SUCCESS
+                fetch('https://nikabogdanovaa98798.app.n8n.cloud/webhook/payment-result', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        status: 'success',
+                        payment: options
+                    })
+                });
+
+                tg.close();
+            },
+            function (reason, options) {
+                // FAIL
+                fetch('https://nikabogdanovaa98798.app.n8n.cloud/webhook/payment-result', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        status: 'fail',
+                        reason: reason,
+                        payment: options
+                    })
+                });
+
+                alert('Оплата не прошла');
+            }
+        );
+    }
+</script>
+
+</body>
+</html>
