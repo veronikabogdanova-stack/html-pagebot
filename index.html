@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>Оплата тарифа</title>
+    <title>Оплата тарифа PRO</title>
 
     <!-- CloudPayments -->
     <script src="https://widget.cloudpayments.ru/bundles/cloudpayments.js"></script>
@@ -23,3 +23,89 @@
         }
 
         .loader {
+            text-align: center;
+            opacity: 0.85;
+        }
+
+        .loader h2 {
+            margin-bottom: 8px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="loader">
+    <h2>Открываем форму оплаты…</h2>
+    <p>Пожалуйста, подождите</p>
+</div>
+
+<!-- скрытая кнопка только для автозапуска -->
+<button id="payBtn" onclick="pay()" style="display:none;"></button>
+
+<script>
+    const tg = window.Telegram.WebApp;
+    tg.expand();
+
+    function pay() {
+        const user = tg.initDataUnsafe.user;
+
+        if (!user) {
+            tg.showAlert('Ошибка получения данных Telegram');
+            return;
+        }
+
+        const widget = new cp.CloudPayments();
+
+        widget.charge(
+            {
+                publicId: 'pk_371ac53e43d82e5215af37c4dda28',
+                description: 'Оплата тарифа PRO',
+                amount: 100,
+                currency: 'RUB',
+                data: {
+                    telegram_id: user.id,
+                    username: user.username,
+                    tariff: 'pro'
+                }
+            },
+            function (options) {
+                // ✅ УСПЕХ
+                fetch('https://nikabogdanovaa98798.app.n8n.cloud/webhook/payment-result', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        status: 'success',
+                        payment: options
+                    })
+                });
+
+                tg.showAlert('✅ Оплата прошла успешно');
+                tg.close();
+            },
+            function (reason, options) {
+                // ❌ ОШИБКА / ОТМЕНА
+                fetch('https://nikabogdanovaa98798.app.n8n.cloud/webhook/payment-result', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        status: 'fail',
+                        reason: reason,
+                        payment: options
+                    })
+                });
+
+                tg.showAlert('❌ Оплата не прошла');
+            }
+        );
+    }
+
+    // 🚀 АВТОЗАПУСК ОПЛАТЫ
+    window.addEventListener('load', () => {
+        setTimeout(() => {
+            document.getElementById('payBtn').click();
+        }, 400);
+    });
+</script>
+
+</body>
+</html>
