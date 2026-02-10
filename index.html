@@ -53,11 +53,13 @@
 
     function pay() {
         const user = tg.initDataUnsafe?.user || tg.initData?.user;
-        if (!user) {
+
+        if (!user || !user.id) {
             tg.showAlert('Ошибка получения данных Telegram');
             return;
         }
 
+        const accountId = String(user.id); // 🔥 КЛЮЧЕВО
         const tariff = getTariffFromURL();
         const amount = TARIFFS[tariff];
 
@@ -69,36 +71,46 @@
                 description: `Оплата тарифа ${tariff}`,
                 amount: amount,
                 currency: 'RUB',
+                accountId: accountId, // ✅ гарантированно придёт в webhook
                 data: {
                     telegram_id: accountId,
-                    username: user.username,
+                    username: user.username || '',
                     tariff: tariff,
-                    project: "AIbots"  // <- исправил синтаксис
+                    project: 'AIbots'
                 }
             },
-            function(options) {
+            function (options) {
                 fetch('https://nikabogdanovaa98798.app.n8n.cloud/webhook/payment-result', {
                     method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({status: 'success', payment: options})
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        status: 'success',
+                        payment: options
+                    })
                 });
+
                 tg.showAlert(`✅ Оплата тарифа ${tariff} прошла успешно`);
                 tg.close();
             },
-            function(reason, options) {
+            function (reason, options) {
                 fetch('https://nikabogdanovaa98798.app.n8n.cloud/webhook/payment-result', {
                     method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({status: 'fail', reason: reason, payment: options})
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        status: 'fail',
+                        reason: reason,
+                        payment: options
+                    })
                 });
+
                 tg.showAlert(`❌ Оплата тарифа ${tariff} не прошла`);
             }
         );
     }
 
-    // Автозапуск оплаты сразу после загрузки
+    // Автозапуск оплаты
     window.addEventListener('load', () => {
-        setTimeout(pay, 400); // запускаем pay() напрямую
+        setTimeout(pay, 400);
     });
 </script>
 
