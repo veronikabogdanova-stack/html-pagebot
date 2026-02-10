@@ -84,6 +84,8 @@
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
+                        telegram_id: accountId,
+                        username: user.username,
                         status: 'success',
                         payment: options
                     })
