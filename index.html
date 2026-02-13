@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>Оплата тарифа</title>
+    <title>Оплата подписки</title>
 
     <!-- CloudPayments -->
     <script src="https://widget.cloudpayments.ru/bundles/cloudpayments.js"></script>
@@ -60,37 +60,37 @@
         }
     };
 
-    // ====== Автоопределение тарифа и режима ======
+    // ====== Определение тарифа (без отображения B2B/B2C) ======
     function resolveTariff() {
         const urlParams = new URLSearchParams(window.location.search);
         const tariff = (urlParams.get('tariff') || '').toUpperCase();
 
-        // Проверяем B2B
+        // B2B тарифы
         if (CONFIG.B2B.tariffs[tariff]) {
             return {
-                mode: 'B2B',
                 tariff: tariff,
                 amount: CONFIG.B2B.tariffs[tariff],
-                webhook: CONFIG.B2B.webhook
+                webhook: CONFIG.B2B.webhook,
+                plan_type: 'business'
             };
         }
 
-        // Проверяем B2C
+        // B2C тарифы
         if (CONFIG.B2C.tariffs[tariff]) {
             return {
-                mode: 'B2C',
                 tariff: tariff,
                 amount: CONFIG.B2C.tariffs[tariff],
-                webhook: CONFIG.B2C.webhook
+                webhook: CONFIG.B2C.webhook,
+                plan_type: 'client'
             };
         }
 
-        // Fallback
+        // fallback
         return {
-            mode: 'B2B',
             tariff: 'TEST',
             amount: CONFIG.B2B.tariffs.TEST,
-            webhook: CONFIG.B2B.webhook
+            webhook: CONFIG.B2B.webhook,
+            plan_type: 'business'
         };
     }
 
@@ -103,14 +103,14 @@
         }
 
         const t = resolveTariff();
-
         const accountId = String(user.id);
+
         const widget = new cp.CloudPayments();
 
         widget.charge(
             {
                 publicId: 'pk_371ac53e43d82e5215af37c4dda28',
-                description: `Оплата тарифа ${t.tariff} (${t.mode})`,
+                description: `Подписка ${t.tariff}`,
                 amount: t.amount,
                 currency: 'RUB',
                 accountId: accountId,
@@ -118,7 +118,7 @@
                     telegram_id: accountId,
                     username: user.username || '',
                     tariff: t.tariff,
-                    mode: t.mode,
+                    plan_type: t.plan_type,
                     project: 'AIbots'
                 }
             },
@@ -131,13 +131,13 @@
                         telegram_id: accountId,
                         username: user.username || '',
                         status: 'success',
-                        mode: t.mode,
                         tariff: t.tariff,
+                        plan_type: t.plan_type,
                         payment: options
                     })
                 });
 
-                tg.showAlert(`✅ Оплата тарифа ${t.tariff} прошла успешно`);
+                tg.showAlert(`✅ Оплата прошла успешно`);
                 setTimeout(() => tg.close(), 800);
             },
             async function (reason, options) {
@@ -149,18 +149,17 @@
                         telegram_id: accountId,
                         status: 'fail',
                         reason: reason,
-                        mode: t.mode,
                         tariff: t.tariff,
+                        plan_type: t.plan_type,
                         payment: options
                     })
                 });
 
-                tg.showAlert(`❌ Оплата тарифа ${t.tariff} не прошла`);
+                tg.showAlert(`❌ Оплата не прошла`);
             }
         );
     }
 
-    // Автозапуск
     window.addEventListener('load', () => {
         setTimeout(pay, 400);
     });
