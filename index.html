@@ -71,7 +71,8 @@
                 tariff: tariff,
                 amount: CONFIG.B2B.tariffs[tariff],
                 webhook: CONFIG.B2B.webhook,
-                plan_type: 'business'
+                plan_type: 'business',
+                project: 'B2B_pr'
             };
         }
 
@@ -81,7 +82,8 @@
                 tariff: tariff,
                 amount: CONFIG.B2C.tariffs[tariff],
                 webhook: CONFIG.B2C.webhook,
-                plan_type: 'client'
+                plan_type: 'client',
+                project: 'B2C_pr'
             };
         }
 
@@ -90,7 +92,8 @@
             tariff: 'TEST',
             amount: CONFIG.B2B.tariffs.TEST,
             webhook: CONFIG.B2B.webhook,
-            plan_type: 'business'
+            plan_type: 'business',
+            project: 'B2B_pr'
         };
     }
 
@@ -119,7 +122,7 @@
                     username: user.username || '',
                     tariff: t.tariff,
                     plan_type: t.plan_type,
-                    project: 'AIbots'
+                    project: t.project
                 }
             },
             async function (options) {
