@@ -39,7 +39,7 @@
     const tg = window.Telegram.WebApp;
     tg.expand();
 
-    // ====== КОНФИГИ ДЛЯ ДВУХ БОТОВ ======
+    // ====== КОНФИГ ДВУХ БОТОВ ======
     const CONFIG = {
         B2B: {
             webhook: 'https://nikabogdanovaa98798.app.n8n.cloud/webhook/payment-result',
@@ -60,16 +60,38 @@
         }
     };
 
-    function getMode() {
+    // ====== Автоопределение тарифа и режима ======
+    function resolveTariff() {
         const urlParams = new URLSearchParams(window.location.search);
-        const mode = urlParams.get('mode');
-        return mode && CONFIG[mode.toUpperCase()] ? mode.toUpperCase() : 'B2B';
-    }
+        const tariff = (urlParams.get('tariff') || '').toUpperCase();
 
-    function getTariffFromURL(mode) {
-        const urlParams = new URLSearchParams(window.location.search);
-        const tariff = urlParams.get('tariff');
-        return tariff && CONFIG[mode].tariffs[tariff] ? tariff : Object.keys(CONFIG[mode].tariffs)[0];
+        // Проверяем B2B
+        if (CONFIG.B2B.tariffs[tariff]) {
+            return {
+                mode: 'B2B',
+                tariff: tariff,
+                amount: CONFIG.B2B.tariffs[tariff],
+                webhook: CONFIG.B2B.webhook
+            };
+        }
+
+        // Проверяем B2C
+        if (CONFIG.B2C.tariffs[tariff]) {
+            return {
+                mode: 'B2C',
+                tariff: tariff,
+                amount: CONFIG.B2C.tariffs[tariff],
+                webhook: CONFIG.B2C.webhook
+            };
+        }
+
+        // Fallback
+        return {
+            mode: 'B2B',
+            tariff: 'TEST',
+            amount: CONFIG.B2B.tariffs.TEST,
+            webhook: CONFIG.B2B.webhook
+        };
     }
 
     function pay() {
@@ -80,64 +102,65 @@
             return;
         }
 
-        const mode = getMode();
-        const tariff = getTariffFromURL(mode);
-        const amount = CONFIG[mode].tariffs[tariff];
-        const webhook = CONFIG[mode].webhook;
+        const t = resolveTariff();
 
         const accountId = String(user.id);
-
         const widget = new cp.CloudPayments();
 
         widget.charge(
             {
                 publicId: 'pk_371ac53e43d82e5215af37c4dda28',
-                description: `Оплата тарифа ${tariff} (${mode})`,
-                amount: amount,
+                description: `Оплата тарифа ${t.tariff} (${t.mode})`,
+                amount: t.amount,
                 currency: 'RUB',
                 accountId: accountId,
                 data: {
                     telegram_id: accountId,
                     username: user.username || '',
-                    tariff: tariff,
-                    mode: mode,
+                    tariff: t.tariff,
+                    mode: t.mode,
                     project: 'AIbots'
                 }
             },
-            function (options) {
-                fetch(webhook, {
+            async function (options) {
+
+                await fetch(t.webhook, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         telegram_id: accountId,
-                        username: user.username,
+                        username: user.username || '',
                         status: 'success',
-                        mode: mode,
+                        mode: t.mode,
+                        tariff: t.tariff,
                         payment: options
                     })
                 });
 
-                tg.showAlert(`✅ Оплата тарифа ${tariff} прошла успешно`);
-                tg.close();
+                tg.showAlert(`✅ Оплата тарифа ${t.tariff} прошла успешно`);
+                setTimeout(() => tg.close(), 800);
             },
-            function (reason, options) {
-                fetch(webhook, {
+            async function (reason, options) {
+
+                await fetch(t.webhook, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         telegram_id: accountId,
                         status: 'fail',
                         reason: reason,
-                        mode: mode,
+                        mode: t.mode,
+                        tariff: t.tariff,
                         payment: options
                     })
                 });
 
-                tg.showAlert(`❌ Оплата тарифа ${tariff} не прошла`);
+                tg.showAlert(`❌ Оплата тарифа ${t.tariff} не прошла`);
             }
         );
     }
 
+    // Автозапуск
     window.addEventListener('load', () => {
         setTimeout(pay, 400);
     });
