@@ -39,16 +39,37 @@
     const tg = window.Telegram.WebApp;
     tg.expand();
 
-    const TARIFFS = {
-        TEST: 990,
-        START: 2990,
-        PRO: 6990
+    // ====== КОНФИГИ ДЛЯ ДВУХ БОТОВ ======
+    const CONFIG = {
+        B2B: {
+            webhook: 'https://nikabogdanovaa98798.app.n8n.cloud/webhook/payment-result',
+            tariffs: {
+                TEST: 990,
+                START: 2990,
+                PRO: 6990
+            }
+        },
+        B2C: {
+            webhook: 'https://alexnano593021.app.n8n.cloud/webhook/payment-result',
+            tariffs: {
+                MINI: 149,
+                BASIC: 299,
+                PLUS: 699,
+                MAX: 1299
+            }
+        }
     };
 
-    function getTariffFromURL() {
+    function getMode() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const mode = urlParams.get('mode');
+        return mode && CONFIG[mode.toUpperCase()] ? mode.toUpperCase() : 'B2B';
+    }
+
+    function getTariffFromURL(mode) {
         const urlParams = new URLSearchParams(window.location.search);
         const tariff = urlParams.get('tariff');
-        return tariff && TARIFFS[tariff] ? tariff : 'TEST';
+        return tariff && CONFIG[mode].tariffs[tariff] ? tariff : Object.keys(CONFIG[mode].tariffs)[0];
     }
 
     function pay() {
@@ -59,34 +80,39 @@
             return;
         }
 
-        const accountId = String(user.id); // 🔥 КЛЮЧЕВО
-        const tariff = getTariffFromURL();
-        const amount = TARIFFS[tariff];
+        const mode = getMode();
+        const tariff = getTariffFromURL(mode);
+        const amount = CONFIG[mode].tariffs[tariff];
+        const webhook = CONFIG[mode].webhook;
+
+        const accountId = String(user.id);
 
         const widget = new cp.CloudPayments();
 
         widget.charge(
             {
                 publicId: 'pk_371ac53e43d82e5215af37c4dda28',
-                description: `Оплата тарифа ${tariff}`,
+                description: `Оплата тарифа ${tariff} (${mode})`,
                 amount: amount,
                 currency: 'RUB',
-                accountId: accountId, // ✅ гарантированно придёт в webhook
+                accountId: accountId,
                 data: {
                     telegram_id: accountId,
                     username: user.username || '',
                     tariff: tariff,
+                    mode: mode,
                     project: 'AIbots'
                 }
             },
             function (options) {
-                fetch('https://nikabogdanovaa98798.app.n8n.cloud/webhook/payment-result', {
+                fetch(webhook, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         telegram_id: accountId,
                         username: user.username,
                         status: 'success',
+                        mode: mode,
                         payment: options
                     })
                 });
@@ -95,12 +121,14 @@
                 tg.close();
             },
             function (reason, options) {
-                fetch('https://nikabogdanovaa98798.app.n8n.cloud/webhook/payment-result', {
+                fetch(webhook, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
+                        telegram_id: accountId,
                         status: 'fail',
                         reason: reason,
+                        mode: mode,
                         payment: options
                     })
                 });
@@ -110,7 +138,6 @@
         );
     }
 
-    // Автозапуск оплаты
     window.addEventListener('load', () => {
         setTimeout(pay, 400);
     });
@@ -118,4 +145,5 @@
 
 </body>
 </html>
+
 
